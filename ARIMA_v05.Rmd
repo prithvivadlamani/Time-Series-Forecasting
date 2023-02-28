@@ -1,0 +1,133 @@
+---
+title: "Demand forecasting with ARIMA model"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+Load the required libraries
+```{r}
+library('ggplot2')
+library('forecast')
+library('tseries')
+```
+
+
+
+```{r}
+setwd("C:/Users/Sowmya CR/Google Drive/BACP_GLIM/time_series")
+demand=read.csv("demand.csv")
+head(demand)
+
+```
+
+Convert data to time series data
+```{r}
+demandTS=ts(demand[,2], start = c(2013,1), frequency = 12)
+```
+
+Decompose the data
+```{r}
+decomp = stl(demandTS, s.window = "periodic")
+deseasonal_demand=seasadj(decomp)
+plot(decomp)
+```
+
+Check for stationarity
+```{r}
+adf.test(demandTS, alternative = "stationary")
+```
+
+Series is not stationary
+
+ACF and PACF plots
+```{r}
+acf(demandTS)
+pacf(demandTS)
+```
+There are significant autocorrelations with many lags in our demand series, as shown by the ACF plot. 
+
+PACF plot shows that there could be monthly seasonality since the plot peaks at intervals of 12
+
+
+Differencing the time series data
+```{r}
+count_d1 = diff(deseasonal_demand, differences = 1)
+plot(count_d1)
+adf.test(count_d1, alternative = "stationary")
+```
+Differenced demand is stationary
+
+acf and pacf for dif time series
+```{r}
+Acf(count_d1, main='ACF for Differenced Series')
+Pacf(count_d1, main='PACF for Differenced Series')
+```
+From the ACF plot, there is a cut off after lag 0. This implies that p=0. PACF cuts off after lag 1. Hence q=1.
+
+Splitting into training and test sets
+```{r}
+demandTStrain = window(deseasonal_demand, start=2013, end=c(2014,12))
+demandTStest= window(deseasonal_demand, start=2015, end=c(2015,12))
+```
+
+
+
+
+```{r}
+demandARIMA = arima(demandTStrain, order=c(0,1,1))
+demandARIMA
+tsdisplay(residuals(demandARIMA), lag.max=15, main='Model Residuals')
+```
+There are no significant autocorrelations present. If the model is not correctly specified, that will usually be reflected in residuals in the form of trends, skeweness, or any other patterns not captured by the model. Ideally, residuals should look like white noise, meaning they are normally distributed.  Residuals plots show a smaller error range, more or less centered around 0.
+
+Fitting with Auto ARIMA
+```{r}
+fit<-auto.arima(demandTStrain, seasonal=FALSE)
+fit
+tsdisplay(residuals(fit), lag.max=45, main='Auto ARIMA Model Residuals')
+```
+
+Auto ARIMA also fits the same p and q parameters for the model, but has a slightly lower AIC.
+
+#Ljung box test
+H0: Residuals are independent
+Ha: Residuals are not independent
+
+```{r}
+library(stats)
+Box.test(demandARIMA$residuals)
+
+```
+Residuals are independent
+
+Forecasting with the ARIMA model
+```{r}
+fcast <- forecast(demandARIMA, h=12)
+fcast1 <- forecast(fit, h=12)
+plot(fcast)
+plot(fcast1)
+
+fit1<-auto.arima(demandTS, seasonal=FALSE)
+fcast2=forecast(fit1, h=12)
+plot(fcast2)
+```
+
+
+Accuracy of the forecast
+```{r}
+f7=forecast(demandARIMA)
+accuracy(f7, demandTStest)
+
+f8=forecast(fit)
+accuracy(f8, demandTStest)
+
+
+
+
+```
+
+
+
+
+

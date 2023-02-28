@@ -1,0 +1,72 @@
+---
+title: "Time series forecasting"
+output: html_notebook
+---
+
+Visualise time series data from various time series datasets
+
+```{r}
+#install.packages('stringi')
+library(stringi)
+```
+
+
+```{r}
+setwd("C:/Users/Sowmya CR/Google Drive/BACP_GLIM/time_series")
+sales = read.csv('sales.csv')
+sales_m = read.csv('sales_monthly.csv')
+
+sales_q = read.csv('Qsales.csv')
+
+dim(sales)
+head(sales_m)
+```
+
+#Plotting time series objects
+```{r}
+#Daily sales data - select only one year data
+sales.ts = ts(sales[c(1:365),2], start = c(2013,1,1), frequency = 365)
+plot(sales.ts)
+
+#Monthly sales data
+msales_ts = ts(sales_m[,2], start = c(2013,1), frequency = 12)
+plot(msales_ts)
+
+#Quarterly sales data
+qsales_ts = ts(sales_q[,2], start = c(2013,1), frequency = 4)
+plot(qsales_ts)
+
+```
+
+#Plot using xts package
+```{r}
+require(xts)
+
+plot(as.xts(msales_ts), major.format = "%mm-%YYYY", cex=0.6)
+```
+
+
+
+```{r}
+monthplot(msales_ts)
+```
+#Over the years, the trend is increasing
+
+#Extracting components of time series
+```{r}
+
+Sales_decomp<-stl(msales_ts, s.window='periodic') #constant seasonality
+plot(Sales_decomp)
+head(Sales_decomp)
+```
+
+
+#Extracting the de-seasonalised series
+```{r}
+Deseason_sales = Sales_decomp$time.series[,2] + Sales_decomp$time.series[,3]
+
+ts.plot(Deseason_sales, msales_ts, col=c("red", "blue"), main="Comparison of Sales and Deseasonalized Sales")
+
+plot(Sales_decomp$time.series[,1], type="l")
+```
+

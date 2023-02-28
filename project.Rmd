@@ -1,0 +1,226 @@
+
+```{r}
+library(stringi)
+```
+```{r}
+sales<-read.csv('work.csv')
+dim(sales)
+head(sales)
+```
+
+```{r}
+IAsales_ts = ts(sales[,3], start = c(2002,1), frequency = 12)
+plot(IAsales_ts)
+```
+
+
+```{r}
+IBsales_ts = ts(sales[,4], start = c(2002,1), frequency = 12)
+plot(IBsales_ts)
+```
+```{r}
+library(xts)
+require(xts)
+plot(as.xts(IAsales_ts), major.format = "%mm-%YYYY", cex=0.6)
+plot(as.xts(IBsales_ts), major.format = "%mm-%YYYY", cex=0.6)
+```
+
+```{r}
+monthplot(IAsales_ts)
+monthplot(IBsales_ts)
+```
+
+```{r}
+IAsales_decomp<-stl(IAsales_ts, s.window= 7) #constant seasonality
+plot(IAsales_decomp)
+head(IAsales_decomp)
+help(stl)
+```
+```{r}
+IBsales_decomp<-stl(IBsales_ts, s.window=7) #constant seasonality
+plot(IBsales_decomp)
+head(IBsales_decomp)
+```
+```{r}
+Deseason_salesIA = IAsales_decomp$time.series[,2] + IAsales_decomp$time.series[,3]
+
+ts.plot(Deseason_salesIA, IAsales_ts, col=c("red", "blue"), main="Comparison of Sales and Deseasonalized Sales")
+
+plot(IAsales_decomp$time.series[,1], type="l")
+```
+
+```{r}
+Deseason_salesIB = IBsales_decomp$time.series[,2] + IBsales_decomp$time.series[,3]
+
+ts.plot(Deseason_salesIB, IBsales_ts, col=c("red", "blue"), main="Comparison of Sales and Deseasonalized Sales")
+
+plot(IBsales_decomp$time.series[,1], type="l")
+```
+
+```{r}
+IAsales.train <- window(IAsales_ts, end = c(2016,12))
+IAsales.test<- window(IAsales_ts, start = c(2017,1))
+
+IAsales.train
+IAsales.test
+```
+```{r}
+IBsales.train <- window(IBsales_ts, end = c(2016,12))
+IBsales.test<- window(IBsales_ts, start = c(2017,1))
+
+IBsales.train
+IBsales.test
+```
+
+```{r}
+library(forecast)
+ses.IAsales = ses(IAsales.train, alpha = 0.2, h=12)
+autoplot(ses.IAsales)
+
+accuracy(ses.IAsales, IAsales.test)
+
+ses.IBsales = ses(IBsales.train, alpha = 0.2, h=12)
+autoplot(ses.IBsales)
+
+accuracy(ses.IBsales, IBsales.test)
+```
+```{r}
+IAsales.dif.train <- diff(IAsales.train)
+IAsales.dif.test <- diff(IAsales.test)
+
+autoplot(IAsales.dif.train)
+ses.IAsales.dif <- ses(IAsales.dif.train, h = 12)
+ses.IAsales.dif$model
+
+IBsales.dif.train <- diff(IBsales.train)
+IBsales.dif.test <- diff(IBsales.test)
+
+autoplot(IBsales.dif.train)
+ses.IBsales.dif <- ses(IBsales.dif.train, h = 12)
+ses.IBsales.dif$model
+```
+```{r}
+accuracy(ses.IAsales.dif, IAsales.dif.test)
+autoplot(ses.IAsales.dif)
+
+accuracy(ses.IBsales.dif, IBsales.dif.test)
+autoplot(ses.IBsales.dif)
+```
+```{r}
+holt.salesIA <- holt(IAsales.train, h = 12)
+autoplot(holt.salesIA)
+holt.salesIA$model
+accuracy(holt.salesIA, IAsales.test)
+
+holt.salesIB <- holt(IBsales.train, h = 12)
+autoplot(holt.salesIB)
+
+holt.salesIB$model
+
+accuracy(holt.salesIB, IBsales.test)
+```
+```{r}
+IAsales.hw <- ets(IAsales.train, model = "AAA")
+autoplot(forecast(IAsales.hw))
+summary(IAsales.hw)
+
+IBsales.hw <- ets(IBsales.train, model = "AAA")
+autoplot(forecast(IBsales.hw))
+summary(IBsales.hw)
+```
+```{r}
+IAsaleshw.f1 <- forecast(IAsales.hw, h = 12)
+accuracy(IAsaleshw.f1, IAsales.test)
+
+IBsaleshw.f1 <- forecast(IBsales.hw, h = 12)
+accuracy(IBsaleshw.f1, IBsales.test)
+```
+```{r}
+IAsales.hw2 <- ets(IAsales.train, model = "MAM")
+autoplot(forecast(IAsales.hw2))
+summary(IAsales.hw2)
+
+# forecast the next 5 quarters
+IAsaleshw.f2 <- forecast(IAsales.hw2, h = 12)
+accuracy(IAsaleshw.f2, IAsales.test)
+
+
+```
+```{r}
+IBsales.hw2 <- ets(IBsales.train, model = "MAM")
+autoplot(forecast(IBsales.hw2))
+summary(IBsales.hw2)
+
+# forecast the next 5 quarters
+IBsaleshw.f2 <- forecast(IBsales.hw2, h = 12)
+accuracy(IBsaleshw.f2, IBsales.test)
+
+help(ets)
+```
+
+```{r}
+library(ggplot2)
+library(tseries)
+library(forecast)
+
+```
+```{r}
+adf.test(IAsales.train)
+adf.test(IBsales.train)
+```
+```{r}
+acf(IAsales.train)
+acf(IAsales.dif.train)
+pacf(IAsales.dif.train)
+
+acf(IBsales.train)
+acf(IBsales.dif.train)
+pacf(IBsales.dif.train)
+
+```
+```{r}
+fit.arimaIA = auto.arima(IAsales.dif.train, seasonal = TRUE)
+fit.arimaIA
+
+# forecast the next 5 quarters
+IAsalesarima.f2 <- forecast(fit.arimaIA, h = 12)
+accuracy(IAsalesarima.f2, IAsales.test)
+
+
+```
+
+```{r}
+fit.arimaIB = auto.arima(IBsales.dif.train, seasonal = TRUE)
+fit.arimaIB
+
+# forecast the next 5 quarters
+IBsalesarima.f2 <- forecast(fit.arimaIB, h = 12)
+accuracy(IBsalesarima.f2, IBsales.test)
+```
+```{r}
+IAsales.hw3 <- ets(IAsales_ts, model = "AAA")
+autoplot(forecast(IAsales.hw3))
+summary(IAsales.hw3)
+
+# forecast the next 5 quarters
+IAsaleshw.f3 <- forecast(IAsales.hw3, h = 12)
+```
+
+```{r}
+IBsales.hw3 <- ets(IBsales_ts, model = "MAM")
+autoplot(forecast(IBsales.hw3))
+summary(IBsales.hw3)
+
+# forecast the next 5 quarters
+IBsaleshw.f3 <- forecast(IBsales.hw3, h = 12)
+IBsales.hw3
+```
+```{r}
+IAsaleshw.f1 <- forecast(IAsales.hw, h = 12)
+accuracy(IAsaleshw.f1, IAsales.test)
+```
+```{r}
+IBsaleshw.f2 <- forecast(IBsales.hw2, h = 12)
+accuracy(IBsaleshw.f2, IBsales.test)
+```
+
